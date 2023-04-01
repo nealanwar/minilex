@@ -75,6 +75,7 @@ class SymbolSequenceBuilder:
         self.seq = []
         self.hold = False
         self.held_stmts = []
+        self.origin = None
         self.finished = False
 
     def add_symbol_condition(self, symbol: Symbol, logic):
@@ -84,7 +85,7 @@ class SymbolSequenceBuilder:
         assert not self.finished, "cannot add cases after generating a symbol sequence"
         self.cases.append((symbol, logic))
 
-    def add(self, event_line: SymbolLine):
+    def __add(self, event_line: SymbolLine):
         """
         Add statement with operator label to event sequence or to held statements set.
         """
@@ -93,7 +94,7 @@ class SymbolSequenceBuilder:
         else:
             self.held_stmts.append(event_line)
 
-    def add_held_statements(self, idx):
+    def __add_held_statements(self, idx):
         """
         Add stmt(s) to symbol sequence partway through.
         """
@@ -101,14 +102,14 @@ class SymbolSequenceBuilder:
         self.hold = False
         self.held_stmts = []
 
-    def add_event_params_to_seq(self, event: Symbol, indent):
+    def __add_event_params_to_seq(self, event: Symbol, indent):
         """
         Add each param to the sequence.
         """
         for k, v in event.children.items():
-            self.add(SymbolLine(event.name, k, indent))  # event feature name
+            self.__add(SymbolLine(event.name, k, indent))  # event feature name
             # feature value enterered into sequence recursively
-            self.parse_and_add_stmts(v, indent)
+            self.__parse_and_add_stmts(v, indent)
 
     def __call__(self, tree: SymbolTree, origin):
         """
@@ -117,6 +118,7 @@ class SymbolSequenceBuilder:
         self.finished = True
 
         sequence = SymbolSequence(tree, origin)
+        self.origin = origin
 
         # accumulate statements to store somewhere other than end of list
         self.hold = False
@@ -124,7 +126,7 @@ class SymbolSequenceBuilder:
 
         # parse and assemble symbol sequence
         self.seq = sequence.seq
-        self.parse_and_add_stmts(tree.logic, -1)
+        self.__parse_and_add_stmts(tree.logic, -1)
 
         # verify flatness of sequence
         assert all(
@@ -135,7 +137,7 @@ class SymbolSequenceBuilder:
 
         return sequence
 
-    def parse_and_add_stmts(self, node, indent):
+    def __parse_and_add_stmts(self, node, indent):
         """
         Parse AST of a symbol recursively (depth-first search) and add statements to
         symbol sequence.
@@ -147,7 +149,7 @@ class SymbolSequenceBuilder:
         # parse enclosing sequence in order
         if isinstance(node, SYM_SEQUENCE):
             for s in node.events:
-                self.parse_and_add_stmts(s, indent + 1)
+                self.__parse_and_add_stmts(s, indent + 1)
 
         # bool or string
         elif isinstance(node, bool) or (isinstance(node, str) and not node.isnumeric()):
@@ -168,15 +170,15 @@ class SymbolSequenceBuilder:
             # add beginning label with other params or label
             # self.add_event_params_to_seq(node)
 
-            self.add(SymbolLine(node.name, node, indent))
-            self.add(ConditionStart(node.name, indent))
+            self.__add(SymbolLine(node.name, node, indent))
+            self.__add(ConditionStart(node.name, indent))
             if cond is not None:
-                self.parse_and_add_stmts(cond, indent + 1)
-            self.add(ResultStart(node.name, indent))
+                self.__parse_and_add_stmts(cond, indent + 1)
+            self.__add(ResultStart(node.name, indent))
             if result is not None:
-                self.parse_and_add_stmts(result, indent + 1)
+                self.__parse_and_add_stmts(result, indent + 1)
 
-            self.add(SymbolLineEnd(node.name, indent))
+            self.__add(SymbolLineEnd(node.name, indent))
 
         parsed_by_case = False
         for sym, logic in self.cases:
@@ -186,7 +188,7 @@ class SymbolSequenceBuilder:
 
         # non-conditional symbols parsed as self
         if not parsed_by_case and isinstance(node, Symbol):
-            self.add(SymbolLine(node.name, node, indent))
+            self.__add(SymbolLine(node.name, node, indent))
 
         else:
             raise TypeError("invalid symbol entered in ast")

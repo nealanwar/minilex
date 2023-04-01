@@ -3,7 +3,7 @@ Abstract syntax tree.
 """
 import re
 
-from minilex.parser.symbol_extractor import SymbolExtractor
+from parse.minilex.parser.symbol_extractor import SymbolExtractor
 
 
 class SymbolTree:
@@ -95,9 +95,14 @@ class SymbolTreeBuilder:
                     text, source, logic_creator(self.symbol_extractor, text)
                 )
 
+        # get first str line
+        # i = 0
+        # while not isinstance(text[i], str) and i < len(text):
+        #     i += 1
+
         # parse regex cases
         for regex, logic_creator in self.regex_cases:
-            r = re.search(regex, text[0])
+            r = re.search(regex, text[0].lower().strip())
             if r is not None:
                 return SymbolTree(
                     text, source, logic_creator(self.symbol_extractor, text, r)
