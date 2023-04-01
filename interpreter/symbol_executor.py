@@ -1,7 +1,7 @@
 from game.GameState import GameState
 
-from parsing.symbols.symbols import *
-from parsing.EventSequence import *
+from parser.symbols.symbols import *
+from parser.EventSequence import *
 from legacy.build_syntax_tree import *
 
 from utils.parse_json import *

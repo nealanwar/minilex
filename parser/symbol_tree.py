@@ -3,7 +3,7 @@ Abstract syntax tree.
 """
 import re
 
-from minilex.parsing.symbol_extractor import SymbolExtractor
+from minilex.parser.symbol_extractor import SymbolExtractor
 
 
 class SymbolTree:

@@ -3,8 +3,8 @@ Symbol sequence builder.
 """
 from typing import List
 
-from minilex.parsing.symbol_tree import SymbolTree
-from minilex.parsing.symbols import SYM_NO_OP, SYM_SEQUENCE, ConditionSymbol, Symbol
+from minilex.parser.symbol_tree import SymbolTree
+from minilex.parser.symbols import SYM_NO_OP, SYM_SEQUENCE, ConditionSymbol, Symbol
 
 
 class SymbolLine:
