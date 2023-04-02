@@ -2,11 +2,12 @@
 Abstract syntax tree.
 """
 import re
+from minilex.data.json_convertable import JSONConvertable
 
-from parse.minilex.parser.symbol_extractor import SymbolExtractor
+from minilex.parser.symbol_extractor import SymbolExtractor
 
 
-class SymbolTree:
+class SymbolTree(JSONConvertable):
     """
     AST of symbols.
     """
@@ -18,16 +19,6 @@ class SymbolTree:
 
     def __repr__(self):
         return f"{self.logic}"
-
-    def to_json(self):
-        """
-        Convert symbol tree to json.
-        """
-        return {
-            "text": self.text,
-            "source": str(self.source),
-            "logic": self.logic.to_json(),
-        }
 
 
 class SymbolTreeBuilder:

@@ -1,9 +1,9 @@
 """
 Types of symbols lexer can convert text to.
 """
+from minilex.data.json_convertable import JSONConvertable
 
-
-class Symbol:
+class Symbol(JSONConvertable):
     """
     Symbol representing lexed text.
     """
