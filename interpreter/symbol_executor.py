@@ -4,6 +4,7 @@ from parser.symbols.symbols import *
 from parser.EventSequence import *
 from legacy.build_syntax_tree import *
 
+
 from utils.parse_json import *
 
 from typing import List
