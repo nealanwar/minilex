@@ -5,7 +5,7 @@ from typing import List
 
 from parse.minilex.parser.symbol_tree import SymbolTree
 from parse.minilex.parser.symbols import SYM_NO_OP, SYM_SEQUENCE, ConditionSymbol, Symbol
-
+from parse.minilex.data.json_convertable import JSONConvertable
 
 class SymbolLine:
     """
@@ -52,17 +52,18 @@ class ResultStart(SymbolLine):
         super().__init__(name, "RESULT", indent)
 
 
-class SymbolSequence:
+class SymbolSequence(JSONConvertable):
     """
     Transform nested AST of symbols to flat sequence.
     """
 
-    def __init__(self, tree: SymbolTree, origin):
+    def __init__(self, tree: SymbolTree, source):
         self.text = tree.text
         self.source = tree.source
-        self.full = tree
+        self.tree: SymbolTree = tree
         self.seq: List[SymbolLine] = []
-        self.event_origin = origin
+        self.symbols = List[Symbol] = []
+        self.source = source
 
 
 class SymbolSequenceBuilder:
@@ -70,13 +71,14 @@ class SymbolSequenceBuilder:
     Transform nested AST of symbols to flat sequence.
     """
 
-    def __init__(self):
+    def __init__(self, tree_builder):
         self.cases = []
         self.seq = []
         self.hold = False
         self.held_stmts = []
-        self.origin = None
+        self.source = None
         self.finished = False
+        self.tree_builder = tree_builder
 
     def add_symbol_condition(self, symbol: Symbol, logic):
         """
@@ -111,12 +113,13 @@ class SymbolSequenceBuilder:
             # feature value enterered into sequence recursively
             self.parse_and_add_stmts(v, indent)
 
-    def __call__(self, tree: SymbolTree, origin):
+    def __call__(self, text, origin):
         """
         Convert a symbol tree to a symbol sequence.
         """
         self.finished = True
 
+        tree = self.tree_builder(text)
         sequence = SymbolSequence(tree, origin)
         self.origin = origin
 
@@ -127,6 +130,8 @@ class SymbolSequenceBuilder:
         # parse and assemble symbol sequence
         self.seq = sequence.seq
         self.parse_and_add_stmts(tree.logic, -1)
+
+        self.symbols = set(self.symbols)
 
         # verify flatness of sequence
         assert all(
@@ -152,15 +157,17 @@ class SymbolSequenceBuilder:
                 self.parse_and_add_stmts(s, indent + 1)
 
         # bool or string
-        elif isinstance(node, bool) or (isinstance(node, str) and not node.isnumeric()):
+        if isinstance(node, bool) or (isinstance(node, str) and not node.isnumeric()):
             return node
 
         # numbers
-        elif isinstance(node, (int, str)):
+        if isinstance(node, (int, str)):
             return int(node)
+        
+        self.symbols.append(node.name)
 
         # clauses and conditions split into labels
-        elif isinstance(node, ConditionSymbol):
+        if isinstance(node, ConditionSymbol):
             cond = node.children.get("condition")
             result = node.children.get("result")
 
@@ -179,6 +186,7 @@ class SymbolSequenceBuilder:
                 self.parse_and_add_stmts(result, indent + 1)
 
             self.add(SymbolLineEnd(node.name, indent))
+            return None
 
         for sym, logic in self.cases:
             if isinstance(node, sym):
