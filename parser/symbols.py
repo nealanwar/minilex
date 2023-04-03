@@ -37,6 +37,8 @@ class Symbol(JSONConvertable):
             return str(obj)
 
         children = self.__dict__
+        if 'children' in children:
+            del children['children']
         if children is None:
             return self.name
         if isinstance(children, dict):
