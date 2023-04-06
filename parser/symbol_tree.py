@@ -59,9 +59,9 @@ class SymbolTreeBuilder:
         self.__on_add_case()
         self.default_case = logic_creator
 
-    def __call__(self, text, source):
+    def __call__(self, text, source, variants=None):
         """
-        Parse some piece of text from a given source.
+        Parse some piece of text from a given source, with optional variants if source is small card.
         """
         # after calling for the first time, cannot add more symbols
         self.finished = True

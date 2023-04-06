@@ -7,7 +7,7 @@ from parse.minilex.parser.symbol_tree import SymbolTree
 from parse.minilex.parser.symbols import SYM_NO_OP, SYM_SEQUENCE, ConditionSymbol, Symbol
 from parse.minilex.data.json_convertable import JSONConvertable
 
-class SymbolLine:
+class SymbolLine(JSONConvertable):
     """
     Line containing symbol information.
     """
@@ -20,7 +20,6 @@ class SymbolLine:
     def __repr__(self):
         tab = "".join(self.indent * ["\t"])
         return f"{tab} ({self.name}, {self.content})"
-
 
 class SymbolLineEnd(SymbolLine):
     """
@@ -62,7 +61,7 @@ class SymbolSequence(JSONConvertable):
         self.source = tree.source
         self.tree: SymbolTree = tree
         self.seq: List[SymbolLine] = []
-        self.symbols = List[Symbol] = []
+        self.symbols: List[Symbol] = []
         self.source = source
 
 
@@ -113,25 +112,29 @@ class SymbolSequenceBuilder:
             # feature value enterered into sequence recursively
             self.parse_and_add_stmts(v, indent)
 
-    def __call__(self, text, origin):
+    def __call__(self, text, source, variants=None):
         """
         Convert a symbol tree to a symbol sequence.
+        variants included for small cards
         """
         self.finished = True
+        self.variants = variants
 
-        tree = self.tree_builder(text)
-        sequence = SymbolSequence(tree, origin)
-        self.origin = origin
+        tree = self.tree_builder(text, source, variants)
+        sequence = SymbolSequence(tree, source)
+        self.source = source
 
         # accumulate statements to store somewhere other than end of list
         self.hold = False
         self.held_stmts = []
 
+        self.symbols = []
+
         # parse and assemble symbol sequence
         self.seq = sequence.seq
         self.parse_and_add_stmts(tree.logic, -1)
 
-        self.symbols = set(self.symbols)
+        sequence.symbols = list(set(self.symbols))
 
         # verify flatness of sequence
         assert all(
