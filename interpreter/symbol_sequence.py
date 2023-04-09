@@ -13,13 +13,15 @@ class SymbolLine(JSONConvertable):
     """
 
     def __init__(self, name, content, indent):
+        super().__init__()
         self.indent = indent
         self.name = name
         self.content = content
 
     def __repr__(self):
         tab = "".join(self.indent * ["\t"])
-        return f"{tab} ({self.name}, {self.content})"
+        r = f"{tab} ({self.name}, {self.content})"
+        return r
 
 class SymbolLineEnd(SymbolLine):
     """
@@ -59,10 +61,13 @@ class SymbolSequence(JSONConvertable):
     def __init__(self, tree: SymbolTree, source):
         self.text = tree.text
         self.source = tree.source
-        self.tree: SymbolTree = tree
+        # self.tree: SymbolTree = tree
         self.seq: List[SymbolLine] = []
         self.symbols: List[Symbol] = []
         self.source = source
+
+    def __repr__(self):
+        return f'Sequence: {self.symbols}'
 
 
 class SymbolSequenceBuilder:
@@ -134,14 +139,19 @@ class SymbolSequenceBuilder:
         self.seq = sequence.seq
         self.parse_and_add_stmts(tree.logic, -1)
 
-        sequence.symbols = list(set(self.symbols))
+        # TODO: actual fix for logic erroneously adding SYM_SEQ, no time to do so now
+        sequence.seq = [e for e in self.seq if e.name != 'SEQ']
+
+        sequence.symbols = list(set([e for e in self.symbols if e != 'SEQ']))
 
         # verify flatness of sequence
         assert all(
             all(not isinstance(k, dict) for k in s[1].keys())
-            for s in self.seq
+            for s in sequence.seq
             if isinstance(s, tuple) and isinstance(s[1], dict)
         ), "nested complex event not permitted in action sequence"
+
+        assert 'SEQ' not in sequence.symbols, 'nested SYM_SEQ not permitted'
 
         return sequence
 
@@ -199,7 +209,6 @@ class SymbolSequenceBuilder:
         # non-conditional symbols parsed as self
         if isinstance(node, Symbol):
             self.add(SymbolLine(node.name, node, indent))
-
         else:
             raise TypeError("invalid symbol entered in ast")
 

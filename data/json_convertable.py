@@ -13,6 +13,9 @@ class JSONConvertable:
                   v.value if isinstance(v, Enum) else \
             v.to_json() if not isinstance(v, (int, str, float)) and v is not None else v
 
+    def __repr__(self):
+        return self.to_json()
+
     def to_json(self):
         """
         Convert to json.

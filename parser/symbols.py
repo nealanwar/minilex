@@ -17,9 +17,12 @@ class Symbol(JSONConvertable):
         assert isinstance(self.name, str), "event name must be str"
 
     def __repr__(self):
+        self_dict = dict(self.__dict__)
+        del self_dict["name"]
+        del self_dict["orig_text"]
         return (
-            f"{self.name}: {self.children}"
-            if self.children is not None and len(self.children) > 0
+            f"{self.name}: {self_dict}"
+            if len(self_dict) > 0
             else f"{self.name}"
         )
 
