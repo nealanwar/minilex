@@ -62,7 +62,7 @@ class SymbolSequence(JSONConvertable):
         self.text = tree.text
         self.source = tree.source
         # self.tree: SymbolTree = tree
-        self.seq: List[SymbolLine] = []
+        self.seq = []
         self.symbols: List[Symbol] = []
         self.source = source
 
@@ -83,6 +83,7 @@ class SymbolSequenceBuilder:
         self.source = None
         self.finished = False
         self.tree_builder = tree_builder
+        self.expand_conditionals = False
 
     def add_symbol_condition(self, symbol: Symbol, logic):
         """
@@ -95,7 +96,10 @@ class SymbolSequenceBuilder:
         """
         Add statement with operator label to event sequence or to held statements set.
         """
-        if not self.hold:
+        # if not expanding conditionals, just add symbols rather than lines
+        if not self.expand_conditionals:
+            self.seq.append(event_line.content)
+        elif not self.hold:
             self.seq.append(event_line)
         else:
             self.held_stmts.append(event_line)
@@ -181,24 +185,29 @@ class SymbolSequenceBuilder:
 
         # clauses and conditions split into labels
         if isinstance(node, ConditionSymbol):
-            cond = node.children.get("condition")
-            result = node.children.get("result")
+            cond = node.condition
+            result = node.result
 
-            del node.children["condition"]
-            del node.children["result"]
+            # del node.children["condition"]
+            # del node.children["result"]
 
             # add beginning label with other params or label
             # self.add_event_params_to_seq(node)
 
             self.add(SymbolLine(node.name, node, indent))
-            self.add(ConditionStart(node.name, indent))
-            if cond is not None:
-                self.parse_and_add_stmts(cond, indent + 1)
-            self.add(ResultStart(node.name, indent))
+            if self.expand_conditionals:
+                self.add(ConditionStart(node.name, indent))
+                if cond is not None:
+                    self.parse_and_add_stmts(cond, indent + 1)
+            else:
+                # if not expanding conditionals fully, keep condition in symbol attributes but not result
+                del node.result
+            if self.expand_conditionals:
+                self.add(ResultStart(node.name, indent))
             if result is not None:
                 self.parse_and_add_stmts(result, indent + 1)
-
-            self.add(SymbolLineEnd(node.name, indent))
+            if self.expand_conditionals:
+                self.add(SymbolLineEnd(node.name, indent))
             return None
 
         for sym, logic in self.cases:

@@ -11,9 +11,9 @@ class Symbol(JSONConvertable):
     def __init__(self, name, text=None):
         self.name = name
         self.orig_text = text
-        self.children = dict(self.__dict__)
-        del self.children["name"]
-        del self.children["orig_text"]
+        # self.children = dict(self.__dict__)
+        # del self.children["name"]
+        # del self.children["orig_text"]
         assert isinstance(self.name, str), "event name must be str"
 
     def __repr__(self):
