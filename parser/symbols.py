@@ -37,7 +37,7 @@ class Symbol(JSONConvertable):
             if isinstance(obj, list):
                 arr = [jsonify(e) for e in obj]
                 return arr[0] if len(arr) == 1 else arr
-            return str(obj)
+            return obj
 
         self_dict = dict(self.__dict__)
         del self_dict["name"]

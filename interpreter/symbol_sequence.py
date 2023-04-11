@@ -151,6 +151,9 @@ class SymbolSequenceBuilder:
         Convert a symbol tree to a symbol sequence.
         variants included for small cards
         """
+        if text is None or isinstance(text, bool) or (isinstance(text, str) and text.replace(' ', '') == 'N/A'):
+            return None
+
         self.finished = True
         self.variants = variants
 
@@ -180,6 +183,9 @@ class SymbolSequenceBuilder:
         import json
         with open('./parse/minilex/interpreter/test.json', 'w') as f:
             json.dump(sequence.to_json(), f, indent=2)
+
+        if isinstance(text, str) and 'gains a non-common' in text:
+            print(1)
 
         return sequence
 
