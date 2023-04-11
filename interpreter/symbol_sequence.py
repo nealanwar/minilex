@@ -61,9 +61,7 @@ class SymbolSequence(JSONConvertable):
     def __init__(self, tree: SymbolTree, source):
         self.text = tree.text
         self.source = tree.source
-        # self.tree: SymbolTree = tree
         self.seq = []
-        self.symbols: List[Symbol] = []
         self.source = source
 
     def __repr__(self):
@@ -73,9 +71,10 @@ class SymbolSequence(JSONConvertable):
 class SymbolSequenceBuilder:
     """
     Transform nested AST of symbols to flat sequence.
+    keep_top_level: if non-empty, create sequence of only non-expanded symbols in list, otherwise create sequence of expanded lines containing any symbol at top level 
     """
 
-    def __init__(self, tree_builder):
+    def __init__(self, tree_builder, collapse = [], keep_top_level: List[Symbol] = []):
         self.cases = []
         self.seq = []
         self.hold = False
@@ -83,7 +82,8 @@ class SymbolSequenceBuilder:
         self.source = None
         self.finished = False
         self.tree_builder = tree_builder
-        self.expand_conditionals = False
+        self.collapse_conditionals = collapse
+        self.keep_top_level = keep_top_level
 
     def add_symbol_condition(self, symbol: Symbol, logic):
         """
@@ -96,10 +96,7 @@ class SymbolSequenceBuilder:
         """
         Add statement with operator label to event sequence or to held statements set.
         """
-        # if not expanding conditionals, just add symbols rather than lines
-        if not self.expand_conditionals:
-            self.seq.append(event_line.content)
-        elif not self.hold:
+        if not self.hold:
             self.seq.append(event_line)
         else:
             self.held_stmts.append(event_line)
@@ -116,10 +113,38 @@ class SymbolSequenceBuilder:
         """
         Add each param to the sequence.
         """
-        for k, v in event.children.items():
+        for k, v in event.__dict__.items():
+            if k == 'name' or k == 'orig_text':
+                continue
             self.add(SymbolLine(event.name, k, indent))  # event feature name
             # feature value enterered into sequence recursively
             self.parse_and_add_stmts(v, indent)
+
+    def get_symbols_from_tree(self, node, acc):
+        """
+        Recursively get symbols from tree.
+        """
+        if node is None:
+            return []
+        if isinstance(node, SYM_SEQUENCE):
+            [self.get_symbols_from_tree(e, acc) for e in node.symbols]
+        else:
+            sub_symbols = dict(node.__dict__)
+             # to prevent the registering of conditions as actions, do not add a node independently if it is the condition
+            # of a condition symbol
+            # e.g. if condition is when(gain(health)), do not add gain(health) which will be interpreted as an action
+            if isinstance(node, ConditionSymbol):
+                del sub_symbols['condition']
+            
+            [self.get_symbols_from_tree(e, acc) for e in sub_symbols.values() if isinstance(e, Symbol)]
+            # to prevent the registering of conditions as actions, do not add a node independently if it is the condition
+            # of a condition symbol
+            acc.append(node)
+        return acc
+
+    def remove_result(self, x):
+        del x.result
+        return x
 
     def __call__(self, text, source, variants=None):
         """
@@ -137,25 +162,24 @@ class SymbolSequenceBuilder:
         self.hold = False
         self.held_stmts = []
 
-        self.symbols = []
-
         # parse and assemble symbol sequence
-        self.seq = sequence.seq
-        self.parse_and_add_stmts(tree.logic, -1)
+        if len(self.keep_top_level) > 0:
+            sequence.seq = [s for s in self.get_symbols_from_tree(tree.logic, []) if any(isinstance(s, sym) for sym in self.keep_top_level)]
+            sequence.seq = [self.remove_result(s) if any(isinstance(s, sym) for sym in self.collapse_conditionals) else s for s in sequence.seq]
+        else:
+            self.seq = sequence.seq
+            self.parse_and_add_stmts(tree.logic, -1)
 
-        # TODO: actual fix for logic erroneously adding SYM_SEQ, no time to do so now
-        sequence.seq = [e for e in self.seq if e.name != 'SEQ']
+            # verify flatness of sequence
+            assert all(
+                all(not isinstance(k, dict) for k in s[1].keys())
+                for s in sequence.seq
+                if isinstance(s, tuple) and isinstance(s[1], dict)
+            ), "nested complex event not permitted in action sequence"
 
-        sequence.symbols = list(set([e for e in self.symbols if e != 'SEQ']))
-
-        # verify flatness of sequence
-        assert all(
-            all(not isinstance(k, dict) for k in s[1].keys())
-            for s in sequence.seq
-            if isinstance(s, tuple) and isinstance(s[1], dict)
-        ), "nested complex event not permitted in action sequence"
-
-        assert 'SEQ' not in sequence.symbols, 'nested SYM_SEQ not permitted'
+        import json
+        with open('./parse/minilex/interpreter/test.json', 'w') as f:
+            json.dump(sequence.to_json(), f, indent=2)
 
         return sequence
 
@@ -181,8 +205,6 @@ class SymbolSequenceBuilder:
         if isinstance(node, (int, str)):
             return int(node)
         
-        self.symbols.append(node.name)
-
         # clauses and conditions split into labels
         if isinstance(node, ConditionSymbol):
             cond = node.condition
@@ -195,25 +217,18 @@ class SymbolSequenceBuilder:
             # self.add_event_params_to_seq(node)
 
             self.add(SymbolLine(node.name, node, indent))
-            if self.expand_conditionals:
-                self.add(ConditionStart(node.name, indent))
-                if cond is not None:
-                    self.parse_and_add_stmts(cond, indent + 1)
-            else:
-                # if not expanding conditionals fully, keep condition in symbol attributes but not result
-                del node.result
-            if self.expand_conditionals:
+            self.add(ConditionStart(node.name, indent))
+            if cond is not None:
+                self.parse_and_add_stmts(cond, indent + 1)
                 self.add(ResultStart(node.name, indent))
             if result is not None:
                 self.parse_and_add_stmts(result, indent + 1)
-            if self.expand_conditionals:
-                self.add(SymbolLineEnd(node.name, indent))
-            return None
-
-        for sym, logic in self.cases:
-            if isinstance(node, sym):
-                logic(self, node, indent)
-                return None
+            self.add(SymbolLineEnd(node.name, indent))
+        else:
+            for sym, logic in self.cases:
+                if isinstance(node, sym):
+                    logic(self, node, indent)
+                    return None
 
         # non-conditional symbols parsed as self
         if isinstance(node, Symbol):

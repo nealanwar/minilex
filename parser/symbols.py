@@ -39,14 +39,14 @@ class Symbol(JSONConvertable):
                 return arr[0] if len(arr) == 1 else arr
             return str(obj)
 
-        children = self.__dict__
-        if 'children' in children:
-            del children['children']
-        if children is None:
+        self_dict = dict(self.__dict__)
+        del self_dict["name"]
+        del self_dict["orig_text"]
+        if self_dict is None or len(self_dict) == 0:
             return self.name
-        if isinstance(children, dict):
-            return {self.name: {k: jsonify(e) for k, e in children.items()}}
-        return {self.name: jsonify(children)}
+        if isinstance(self_dict, dict):
+            return {self.name: {k: jsonify(e) for k, e in self_dict.items()}}
+        return {self.name: jsonify(self_dict)}
 
 
 class ConditionSymbol(Symbol):
