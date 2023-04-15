@@ -87,8 +87,6 @@ class SymbolExtractor:
             exc_r = [re.search(e, string) for e in sym.exclude_regex]
 
             if inc_r is not None and all(e is None for e in exc_r):
-                if 'gain this card' in sym.regex:
-                    daf = 3
                 # final arg always original tex
                 group_args = [self(inc_r.group(d)) for d in sym.args]
                 # if custom make function is provided, use that to instantiate class

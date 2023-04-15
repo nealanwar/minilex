@@ -130,7 +130,7 @@ class SymbolSequenceBuilder:
             [self.get_symbols_from_tree(e, acc) for e in node.symbols]
         else:
             sub_symbols = dict(node.__dict__)
-             # to prevent the registering of conditions as actions, do not add a node independently if it is the condition
+            # to prevent the registering of conditions as actions, do not add a node independently if it is the condition
             # of a condition symbol
             # e.g. if condition is when(gain(health)), do not add gain(health) which will be interpreted as an action
             if isinstance(node, ConditionSymbol):
@@ -180,12 +180,12 @@ class SymbolSequenceBuilder:
                 if isinstance(s, tuple) and isinstance(s[1], dict)
             ), "nested complex event not permitted in action sequence"
 
-        import json
-        with open('./parse/minilex/interpreter/test.json', 'w') as f:
-            json.dump(sequence.to_json(), f, indent=2)
+        # import json
+        # with open('./parse/minilex/interpreter/test.json', 'w') as f:
+        #     json.dump(sequence.to_json(), f, indent=2)
 
-        if isinstance(text, str) and 'gains a non-common' in text:
-            print(1)
+        # if isinstance(text, str) and 'gains a non-common' in text:
+        #     print(1)
 
         return sequence
 
