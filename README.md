@@ -1,1 +1,1 @@
-Library for parsing text into AST of defined symbols
+Small parser for ASTs with pre-defined token sets, uses tokens representing logic of the board game Eldritch Horror
